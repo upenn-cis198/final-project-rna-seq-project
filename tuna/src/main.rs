@@ -1,22 +1,11 @@
 extern crate primes;
 
-mod dna_hash_table;
-
-use dna_hash_table::DNAHashTable;
-use dna_hash_table::Kmer;
+mod read_inputs;
 
 fn main() {
-    let mut segments : Vec<String> = Vec::<String>::new();
-    let k : usize = 10;
-    segments.push("ATGATAGATAGACATACGTACGATCG".to_string());
-    let kmer_hash_table = DNAHashTable::new(&segments, k);
-    let kmer : String = "ATGATAGATA".to_string();
-    match kmer_hash_table.get_kmer(&kmer) {
-    	Some((kmers, kmer_indexes)) => {
-    		for kmer_index in kmer_indexes {
-    			println!("{:?}", kmers[kmer_index]);
-    		}
-    	},
-    	None => (),
-    };
+    let input = read_inputs::read_fq_file("example_file.txt");
+
+    for x in input {
+        println!("{}", x);
+    }
 }
