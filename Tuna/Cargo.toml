@@ -1,0 +1,6 @@
+[package]
+name = "Tuna"
+version = "0.1.0"
+authors = ["Steffen Cornwell <steffencornwell@gmail.com>"]
+
+[dependencies]
