@@ -3,6 +3,7 @@ extern crate primes;
 mod dna_hash_table;
 
 use dna_hash_table::DNAHashTable;
+use dna_hash_table::Kmer;
 
 fn main() {
     let mut segments : Vec<String> = Vec::<String>::new();
@@ -10,5 +11,12 @@ fn main() {
     segments.push("ATGATAGATAGACATACGTACGATCG".to_string());
     let kmer_hash_table = DNAHashTable::new(&segments, k);
     let kmer : String = "ATGATAGATA".to_string();
-    kmer_hash_table.get_kmer(&kmer);
+    match kmer_hash_table.get_kmer(&kmer) {
+    	Some((kmers, kmer_indexes)) => {
+    		for kmer_index in kmer_indexes {
+    			println!("{:?}", kmers[kmer_index]);
+    		}
+    	},
+    	None => (),
+    };
 }
