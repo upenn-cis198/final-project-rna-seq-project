@@ -1,0 +1,7 @@
+Hash Tables:
+
+Size should be 1.3 times the number of keys
+http://cseweb.ucsd.edu/~kube/cls/100/Lectures/lec16/lec16-8.html
+
+Size should be a prime number
+https://www.cs.cmu.edu/~tcortina/15-121sp10/Unit08B.pdf
