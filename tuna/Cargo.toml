@@ -5,3 +5,4 @@ authors = ["Steffen Cornwell <steffencornwell@gmail.com>"]
 
 [dependencies]
 primes = "0.2.3"
+structopt = "0.2.13"
