@@ -2,7 +2,7 @@ use primes::PrimeSet;
 use std::cmp;
 
 pub struct DNAHashTable<'a> {
-	pub hash_table : &'a Vec<Vec<Kmer>>,
+	pub hash_table : Vec<Vec<Kmer>>,
 	segments : &'a Vec<String>,
 	pub size : usize,
 	k : usize,
@@ -17,7 +17,7 @@ impl<'a> DNAHashTable<'a> {
 	pub fn new(segments : &Vec<String>, k : usize) -> DNAHashTable {
 		let j : usize = DNAHashTable::get_max_j(k);
 		let size : usize = DNAHashTable::get_table_size(segments, k);
-		let mut hash_table : & Vec<Vec<Kmer>> = &vec![Vec::<Kmer>::new(); size];
+		let mut hash_table : Vec<Vec<Kmer>> = vec![Vec::<Kmer>::new(); size];
 
 		let mut creation_time : usize = 0;
 		for segment_index in 0..segments.len() {
