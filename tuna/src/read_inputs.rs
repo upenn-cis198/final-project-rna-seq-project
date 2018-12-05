@@ -2,6 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
+use std::collections::HashMap;
 
 pub struct FaEntry {
     pub seg_id : String,
@@ -111,3 +112,6 @@ pub fn read_fa_file(filename : &str) -> Vec<FaEntry> {
 	return fq_strings
 }
 
+pub fn write_output(filename : &str, counts : HashMap<String, i32>) -> bool {
+	unimplemented!();
+}
