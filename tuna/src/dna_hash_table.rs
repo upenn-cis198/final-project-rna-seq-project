@@ -2,11 +2,13 @@ use primes::PrimeSet;
 use std::cmp;
 
 pub struct DNAHashTable<'a> {
-	hash_table : Vec<Vec<Kmer>>,
+	pub hash_table : &'a Vec<Vec<Kmer>>,
 	segments : &'a Vec<String>,
 	pub size : usize,
 	k : usize,
 	j : usize,
+	segment_iter_index : usize,
+	kmer_iter_index : usize,
 }
 
 impl<'a> DNAHashTable<'a> {
@@ -15,8 +17,9 @@ impl<'a> DNAHashTable<'a> {
 	pub fn new(segments : &Vec<String>, k : usize) -> DNAHashTable {
 		let j : usize = DNAHashTable::get_max_j(k);
 		let size : usize = DNAHashTable::get_table_size(segments, k);
-		let mut hash_table : Vec<Vec<Kmer>> = vec![Vec::<Kmer>::new(); size];
+		let mut hash_table : & Vec<Vec<Kmer>> = &vec![Vec::<Kmer>::new(); size];
 
+		let mut creation_time : usize = 0;
 		for segment_index in 0..segments.len() {
 			let segment : &String = &segments[segment_index];
 			for i in 0..(segment.len() - k + 1) {
@@ -24,7 +27,9 @@ impl<'a> DNAHashTable<'a> {
 				hash_table[hash_value].push(Kmer {
 					segment_index : segment_index,
 					position : i,
+					creation_time : creation_time,
 				});
+				creation_time += 1;
 			}
 		}
 
@@ -33,36 +38,37 @@ impl<'a> DNAHashTable<'a> {
 			segments : segments,
 			size : size,
 			k : k,
-			j : j
+			j : j,
+			segment_iter_index : 0,
+			kmer_iter_index : 0,
 		}
 	}
 
-	pub fn get_kmer(&self, kmer_string : &String) -> Option<(&Vec<Kmer>, Vec<usize>)> {
-		match kmer_string.len() {
-			self.k => {
-				let hash_value : usize = DNAHashTable::hash_function(kmer_string, self.j, self.size);
-				let hash_element : &Vec<Kmer> = &self.hash_table[hash_value];
-				match hash_element.len() {
-					0 => None,
-					_ => {
-						let mut kmer_indexes : Vec<usize> = Vec::<usize>::new();
-						kmer_indexes.reserve(hash_element.len());
-						
-						for i in 0..hash_element.len() {
-							let kmer : &Kmer = &hash_element[i];
-							println!("{:?}", kmer);
-							if self.segments[kmer.segment_index][kmer.position..(kmer.position + self.k)] == *kmer_string {
-								kmer_indexes.push(i);
-							}
-						}
-						match kmer_indexes.len() {
-							0 => None,
-							_ => Some((&hash_element, kmer_indexes)),
+	pub fn get_kmer(&self, kmer_string : &str) -> Option<(&Vec<Kmer>, Vec<usize>)> {
+		if kmer_string.len() == self.k {
+			let hash_value : usize = DNAHashTable::hash_function(kmer_string, self.j, self.size);
+			let hash_element : &Vec<Kmer> = &self.hash_table[hash_value];
+			match hash_element.len() {
+				0 => None,
+				_ => {
+					let mut kmer_indexes : Vec<usize> = Vec::<usize>::new();
+					kmer_indexes.reserve(hash_element.len());
+					
+					for i in 0..hash_element.len() {
+						let kmer : &Kmer = &hash_element[i];
+						println!("{:?}", kmer);
+						if self.segments[kmer.segment_index][kmer.position..(kmer.position + self.k)] == *kmer_string {
+							kmer_indexes.push(i);
 						}
 					}
+					match kmer_indexes.len() {
+						0 => None,
+						_ => Some((&hash_element, kmer_indexes)),
+					}
 				}
-			},
-			_ => None,
+			}
+		} else {
+			None
 		}
 	}
 
@@ -116,9 +122,27 @@ impl<'a> DNAHashTable<'a> {
 	}
 }
 
+impl<'a> Iterator for DNAHashTable<'a> {
+	type Item = &'a Kmer;
+
+	fn next(&mut self) -> Option<&'a Kmer> {
+		if self.segment_iter_index >= self.size {
+			None
+		} else {
+			let next_kmer : &'a Kmer = &self.hash_table[self.segment_iter_index][self.kmer_iter_index];
+			self.segment_iter_index += 1;
+			self.kmer_iter_index += 1;
+			Some(next_kmer)
+		}
+	}
+}
+
+//CONSIDER USING A TRAIT HERE FOR DIFFERING KMERS ON CREATION TIME
+
 //A locus is a location in the genome, which we represent by the segment that the k-mer mapped to and the location on the segment
 #[derive(Clone, Debug)]
 pub struct Kmer {
 	pub segment_index : usize,
 	pub position : usize,
+	pub creation_time : usize,
 }

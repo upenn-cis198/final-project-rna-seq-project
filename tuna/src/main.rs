@@ -1,9 +1,9 @@
 extern crate primes;
 
 mod dna_hash_table;
+mod dna_read_graph;
 
 use dna_hash_table::DNAHashTable;
-use dna_hash_table::Kmer;
 
 fn main() {
     let mut segments : Vec<String> = Vec::<String>::new();
