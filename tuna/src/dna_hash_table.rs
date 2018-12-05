@@ -1,11 +1,9 @@
 use primes::PrimeSet;
 use std::cmp;
 
-use std::hash::Hash;
-use std::cmp::Eq;
 use std::collections::HashMap;
-use std::iter::*;
-use std::collections::hash_map::Entry;
+
+use log::*;
 
 pub struct DNAHashTable<'a> {
 	pub hash_table : Vec<Vec<Kmer>>,
@@ -62,7 +60,7 @@ impl<'a> DNAHashTable<'a> {
 					
 					for i in 0..hash_element.len() {
 						let kmer : &Kmer = &hash_element[i];
-						println!("{:?}", kmer);
+						debug!("{:?}", kmer);
 						if self.segments[kmer.segment_index][kmer.position..(kmer.position + self.k)] == *kmer_string {
 							kmer_indexes.push(i);
 						}
@@ -137,7 +135,7 @@ pub fn get_segments(kmer_hash_table : &DNAHashTable, reads : &Vec<String>) -> Ha
 		match kmer_hash_table.get_kmer(&r) {
 	    	Some((kmers, kmer_indexes)) => {
 	    		for kmer_index in kmer_indexes {
-	    			println!("{:?}", &kmers[kmer_index]);
+	    			debug!("{:?}", &kmers[kmer_index]);
 	                let count_instance = &kmers[kmer_index];
 
 	                let count = segment_index_counts.entry(count_instance.segment_index as i32).or_insert(0);
@@ -145,7 +143,7 @@ pub fn get_segments(kmer_hash_table : &DNAHashTable, reads : &Vec<String>) -> Ha
 	    		}
 	    	},
 	    	None => {
-	            println!("No match");
+	            debug!("No match");
 	        }
     };
 
@@ -177,8 +175,6 @@ pub fn get_segments(kmer_hash_table : &DNAHashTable, reads : &Vec<String>) -> Ha
 
 // 	return segment_index_counts;
 // }
-
-
 
 //CONSIDER USING A TRAIT HERE FOR DIFFERING KMERS ON CREATION TIME
 
