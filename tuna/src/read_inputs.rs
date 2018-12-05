@@ -40,6 +40,10 @@ pub fn is_char_RNA(x : char) -> bool {
 	return x == 'A' || x == 'U' || x == 'C' || x == 'G' || x == 'T';
 }
 
+pub fn is_char_header(x : char) -> bool {
+	return x == '!' || x == '@' || x == '>';
+}
+
 /**
 	read_fq_fasta_file:
 	Given the name of a fq or fasta file, read it into a vector of strings consisting of
@@ -91,7 +95,7 @@ pub fn read_fa_file(filename : &str) -> Vec<FaEntry> {
 		// println!("{}", line_val);
 		// println!("{}", first_char == 'a');
 
-		if first_char == '!' || first_char == '@' || first_char == '>' {
+		if is_char_header(first_char) {
 			// process new string
 			if current != "" {
 				let fa_entry = FaEntry::from_read(current_seg_id, current);
@@ -102,7 +106,9 @@ pub fn read_fa_file(filename : &str) -> Vec<FaEntry> {
 			// assign the first word to current_seg_id
 			
 			let mut first_word : String = line_val.split_whitespace().next().expect("no word in header").to_string();
-			first_word = first_word.chars().filter(|x| (*x).is_numeric()).collect();
+			// first_word = first_word.chars().filter(|x| (*x).is_numeric()).collect();
+			first_word = first_word.chars().filter(|x| !is_char_header(*x)).collect();
+			println!("{}", first_word);
 			current_seg_id = first_word;
 			continue; // skip
 		} else {
@@ -144,7 +150,9 @@ pub fn read_fa_file_to_cols(filename : &str) -> FaColDB {
 			// assign the first word to current_seg_id
 			
 			let mut first_word : String = line_val.split_whitespace().next().expect("no word in header").to_string();
-			first_word = first_word.chars().filter(|x| (*x).is_numeric()).collect();
+			// first_word = first_word.chars().filter(|x| (*x).is_numeric()).collect();
+			first_word = first_word.chars().filter(|x| !is_char_header(*x)).collect();
+			println!("{}", first_word);
 			current_seg_id = first_word;
 			continue; // skip
 		} else {

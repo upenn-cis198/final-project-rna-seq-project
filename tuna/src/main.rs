@@ -15,7 +15,7 @@ fn main() {
 
     let fa_col_db = read_inputs::read_fa_file_to_cols("example_file2.txt");
 
-    for s in &fa_col_db.seg_strings{
+    for s in &fa_col_db.seg_ids{
         println!("Seg {}", s);
     }
     let k : usize = 10;
