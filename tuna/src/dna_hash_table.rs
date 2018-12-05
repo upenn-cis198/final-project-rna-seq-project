@@ -125,7 +125,7 @@ impl<'a> DNAHashTable<'a> {
 
 	pub fn get_most_likely_position(&self, segments : &Vec<String>, lmer : &str) -> Option<(usize, usize)> {
 		let mut kmer_counts = HashMultiSet::<(usize, usize)>::new();
-		for i in 0..(lmer.len() - self.k) {
+		for i in 0..(lmer.len() - self.k + 1) {
 			println!("{}", i);
 			let kmer_string : &str = &lmer[i..(i+self.k)];
 			match DNAHashTable::get_kmer(&self, kmer_string) {

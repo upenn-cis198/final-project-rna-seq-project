@@ -15,7 +15,6 @@ mod args;
 use env_logger::Env;
 use rayon::prelude::*;
 use std::collections::HashMap;
-use dna_hash_table::DNAHashTable;
 use dna_read_graph::DNAReadGraph;
 use structopt::StructOpt;
 use log::*;

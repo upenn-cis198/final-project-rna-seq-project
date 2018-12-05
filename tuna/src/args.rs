@@ -1,4 +1,5 @@
 extern crate structopt;
+//Command: target/debug/tuna -v -k 10 example_reads.txt example_seqs.txt out.txt
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "tuna", about = "RNA sequence aligner")]

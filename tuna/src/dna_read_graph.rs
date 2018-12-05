@@ -21,10 +21,10 @@ impl<'a> DNAReadGraph<'a> {
 		};
 		let default_reference_read : ReferenceRead = ReferenceRead {
 			lmer : default_reference_lmer,
-			near_reads_A : Vec::<Vec<usize>>::new(),
-			near_reads_C : Vec::<Vec<usize>>::new(),
-			near_reads_G : Vec::<Vec<usize>>::new(),
-			near_reads_T : Vec::<Vec<usize>>::new(),
+			near_reads_a : Vec::<Vec<usize>>::new(),
+			near_reads_c : Vec::<Vec<usize>>::new(),
+			near_reads_g : Vec::<Vec<usize>>::new(),
+			near_reads_t : Vec::<Vec<usize>>::new(),
 		};
 
 		//Make this more efficient later - wastes space
@@ -41,13 +41,13 @@ impl<'a> DNAReadGraph<'a> {
 				//CONSIDER MAKING INTO OWN METHOD
 				let mut traversed_matching_lmers : HashSet<(usize, usize)> = HashSet::<(usize, usize)>::new();
 
-				let mut near_reads_A = vec![Vec::<usize>::new(); l];
-				let mut near_reads_C = vec![Vec::<usize>::new(); l];
-				let mut near_reads_G = vec![Vec::<usize>::new(); l];
-				let mut near_reads_T = vec![Vec::<usize>::new(); l];
+				let mut near_reads_a = vec![Vec::<usize>::new(); l];
+				let mut near_reads_c = vec![Vec::<usize>::new(); l];
+				let mut near_reads_g = vec![Vec::<usize>::new(); l];
+				let mut near_reads_t = vec![Vec::<usize>::new(); l];
 
 				//Hash every k-mer of the l-mer
-				for i in lmer.position..(lmer.position + l - k) {
+				for i in lmer.position..(lmer.position + l - k + 1) {
 					let kmer_string : &str = &(segments[lmer.segment_index][i..(i + k)]);
 					let (kmers, matching_indexes) = kmer_hash_table.get_kmer(kmer_string).unwrap();
 					for matching_index in matching_indexes {
@@ -71,10 +71,10 @@ impl<'a> DNAReadGraph<'a> {
 									while let (Some(transition_position), Some(transition_letter)) = 
 									(transition_positions_iter.next(), transition_letters_iter.next()) {
 										match transition_letter {
-											'A' => near_reads_A[*transition_position].push(matching_lmer_index),
-											'C' => near_reads_C[*transition_position].push(matching_lmer_index),
-											'G' => near_reads_G[*transition_position].push(matching_lmer_index),
-											'T' => near_reads_T[*transition_position].push(matching_lmer_index),
+											'A' => near_reads_a[*transition_position].push(matching_lmer_index),
+											'C' => near_reads_c[*transition_position].push(matching_lmer_index),
+											'G' => near_reads_g[*transition_position].push(matching_lmer_index),
+											'T' => near_reads_t[*transition_position].push(matching_lmer_index),
 											_ => {},
 										};
 									}
@@ -88,10 +88,10 @@ impl<'a> DNAReadGraph<'a> {
 
 				nodes[lmer.creation_time] = ReferenceRead {
 					lmer : lmer.clone(),
-					near_reads_A : near_reads_A,
-					near_reads_C : near_reads_C,
-					near_reads_G : near_reads_G,
-					near_reads_T : near_reads_T,
+					near_reads_a : near_reads_a,
+					near_reads_c : near_reads_c,
+					near_reads_g : near_reads_g,
+					near_reads_t : near_reads_t,
 				};
 				kmer_iter_index += 1;
 			}
@@ -110,14 +110,18 @@ impl<'a> DNAReadGraph<'a> {
 
 	pub fn get_read_segment_indexes(&self, segments : &Vec<String>, reads : &Vec<String>) -> HashMap<i32, i32> {
 		let mut segment_index_counts : HashMap<i32, i32> = HashMap::new();
-
+		debug!("{}", segments[0]);
 		for read in reads {
+			debug!("{}", read);
 			match self.kmer_hash_table.get_most_likely_position(segments, read) {
-		    	Some((segment_index, position)) => {
+		    	Some((segment_index, _)) => {
 	                let count = segment_index_counts.entry(segment_index as i32).or_insert(0);
 	                *count += 1;
+	                debug!("{}", *count);
 	    		},
-		    	None => {},
+		    	None => {
+		    		debug!("No match");
+		    	},
 		    }
 	    };
 		segment_index_counts
@@ -182,10 +186,10 @@ impl<'a> DNAReadGraph<'a> {
 #[derive(Clone)]
 pub struct ReferenceRead {
 	pub lmer : Kmer,
-	near_reads_A : Vec<Vec<usize>>,
-	near_reads_C : Vec<Vec<usize>>,
-	near_reads_G : Vec<Vec<usize>>,
-	near_reads_T : Vec<Vec<usize>>,
+	near_reads_a : Vec<Vec<usize>>,
+	near_reads_c : Vec<Vec<usize>>,
+	near_reads_g : Vec<Vec<usize>>,
+	near_reads_t : Vec<Vec<usize>>,
 }
 
 #[cfg(test)]
