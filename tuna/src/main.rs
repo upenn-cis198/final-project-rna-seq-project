@@ -89,5 +89,5 @@ fn main() {
     // };
 
 
-    read_inputs::write_output3("out.txt", global_map, fa_col_db.seg_ids);
+    read_inputs::write_output4("out.txt", &mut global_map, fa_col_db.seg_ids);
 }
