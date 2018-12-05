@@ -1,6 +1,12 @@
 use primes::PrimeSet;
 use std::cmp;
 
+use std::hash::Hash;
+use std::cmp::Eq;
+use std::collections::HashMap;
+use std::iter::*;
+use std::collections::hash_map::Entry;
+
 pub struct DNAHashTable<'a> {
 	pub hash_table : Vec<Vec<Kmer>>,
 	segments : &'a Vec<String>,
@@ -120,7 +126,57 @@ impl<'a> DNAHashTable<'a> {
 		}
 		hash_value % size
 	}
+
 }
+
+
+pub fn get_segments(kmer_hash_table : &DNAHashTable, reads : &Vec<String>) -> HashMap<i32, i32> {
+    let mut segment_index_counts : HashMap<i32, i32> = HashMap::new();
+
+	for r in reads {
+		match kmer_hash_table.get_kmer(&r) {
+	    	Some((kmers, kmer_indexes)) => {
+	    		for kmer_index in kmer_indexes {
+	    			println!("{:?}", &kmers[kmer_index]);
+	                let count_instance = &kmers[kmer_index];
+
+	                let count = segment_index_counts.entry(count_instance.segment_index as i32).or_insert(0);
+	                *count += 1;
+	    		}
+	    	},
+	    	None => {
+	            println!("No match");
+	        }
+    };
+
+	}
+
+	return segment_index_counts;
+}
+
+// pub fn get_segments2(kmer_hash_table : &DNAHashTable, reads : &Vec<String>) -> PartialSegmentMap {
+//     let mut segment_index_counts : HashMap<i32, i32> = HashMap::new();
+
+// 	for r in reads {
+// 		match kmer_hash_table.get_kmer(&r) {
+// 	    	Some((kmers, kmer_indexes)) => {
+// 	    		for kmer_index in kmer_indexes {
+// 	    			println!("{:?}", &kmers[kmer_index]);
+// 	                let count_instance = &kmers[kmer_index];
+
+// 	                let count = segment_index_counts.entry(count_instance.segment_index as i32).or_insert(0);
+// 	                *count += 1;
+// 	    		}
+// 	    	},
+// 	    	None => {
+// 	            println!("No match");
+// 	        }
+//     };
+
+// 	}
+
+// 	return segment_index_counts;
+// }
 
 
 
@@ -133,3 +189,20 @@ pub struct Kmer {
 	pub position : usize,
 	pub creation_time : usize,
 }
+
+// pub struct PartialSegmentMap {
+// 	pub partial_seg_index_counts : HashMap<i32, i32>
+// }
+
+// impl Sum for PartialSegmentMap {
+
+// 	fn sum<I: Iterator<Item = PartialSegmentMap>>(iter : I) -> Self {
+// 		for i in iter {
+// 			for (k1, v1) in i.partial_seg_index_counts {
+// 				let count = &self.partial_seg_index_counts.entry(k1).or_insert(0);
+// 				*count += v1;
+// 			}
+
+// 		}
+// 	}
+// }

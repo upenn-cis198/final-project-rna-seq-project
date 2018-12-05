@@ -194,7 +194,7 @@ pub fn write_output3(filename : &str, counts : HashMap<i32, i32>, segment_id_str
 	let mut lw = LineWriter::new(file);
 
 	for (k, v) in counts.iter() {
-		lw.write_fmt(format_args!("{}\t{}\n", segment_id_strings.get((k - 1) as usize).expect("Array index out of bounds with segment IDs"), v));
+		lw.write_fmt(format_args!("{}\t{}\n", segment_id_strings.get((*k) as usize).expect("Array index out of bounds with segment IDs"), v));
 	}
 	return true;
 }
