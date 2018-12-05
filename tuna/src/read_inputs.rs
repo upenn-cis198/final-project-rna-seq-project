@@ -161,12 +161,32 @@ pub fn read_fa_file_to_cols(filename : &str) -> FaColDB {
 
 }
 
-pub fn write_output(filename : &str, counts : HashMap<String, i32>) -> bool {
+// pub fn write_output(filename : &str, counts : HashMap<String, i32>) -> bool {
+// 	let file = File::create(filename).expect("Unable to create file");
+// 	let mut lw = LineWriter::new(file);
+
+// 	for (k, v) in counts.iter() {
+// 		lw.write_fmt(format_args!("{}\t{}\n", k, v));
+// 	}
+// 	return true;
+// }
+
+pub fn write_output2(filename : &str, counts : HashMap<i32, i32>) -> bool {
 	let file = File::create(filename).expect("Unable to create file");
 	let mut lw = LineWriter::new(file);
 
 	for (k, v) in counts.iter() {
 		lw.write_fmt(format_args!("{}\t{}\n", k, v));
+	}
+	return true;
+}
+
+pub fn write_output3(filename : &str, counts : HashMap<i32, i32>, segment_id_strings : Vec<String>) -> bool {
+	let file = File::create(filename).expect("Unable to create file");
+	let mut lw = LineWriter::new(file);
+
+	for (k, v) in counts.iter() {
+		lw.write_fmt(format_args!("{}\t{}\n", segment_id_strings.get((k - 1) as usize).expect("Array index out of bounds with segment IDs"), v));
 	}
 	return true;
 }
