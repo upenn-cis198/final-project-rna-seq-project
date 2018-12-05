@@ -122,20 +122,7 @@ impl<'a> DNAHashTable<'a> {
 	}
 }
 
-impl<'a> Iterator for DNAHashTable<'a> {
-	type Item = &'a Kmer;
 
-	fn next(&mut self) -> Option<&'a Kmer> {
-		if self.segment_iter_index >= self.size {
-			None
-		} else {
-			let next_kmer : &'a Kmer = &self.hash_table[self.segment_iter_index][self.kmer_iter_index];
-			self.segment_iter_index += 1;
-			self.kmer_iter_index += 1;
-			Some(next_kmer)
-		}
-	}
-}
 
 //CONSIDER USING A TRAIT HERE FOR DIFFERING KMERS ON CREATION TIME
 
