@@ -1,8 +1,11 @@
+extern crate multiset;
+
 use primes::PrimeSet;
+use self::multiset::HashMultiSet;
 use std::cmp;
 
 pub struct DNAHashTable<'a> {
-	pub hash_table : &'a Vec<Vec<Kmer>>,
+	pub hash_table : Vec<Vec<Kmer>>,
 	segments : &'a Vec<String>,
 	pub size : usize,
 	k : usize,
@@ -17,7 +20,7 @@ impl<'a> DNAHashTable<'a> {
 	pub fn new(segments : &Vec<String>, k : usize) -> DNAHashTable {
 		let j : usize = DNAHashTable::get_max_j(k);
 		let size : usize = DNAHashTable::get_table_size(segments, k);
-		let mut hash_table : & Vec<Vec<Kmer>> = &vec![Vec::<Kmer>::new(); size];
+		let mut hash_table : Vec<Vec<Kmer>> = vec![Vec::<Kmer>::new(); size];
 
 		let mut creation_time : usize = 0;
 		for segment_index in 0..segments.len() {
@@ -56,7 +59,6 @@ impl<'a> DNAHashTable<'a> {
 					
 					for i in 0..hash_element.len() {
 						let kmer : &Kmer = &hash_element[i];
-						println!("{:?}", kmer);
 						if self.segments[kmer.segment_index][kmer.position..(kmer.position + self.k)] == *kmer_string {
 							kmer_indexes.push(i);
 						}
@@ -73,7 +75,7 @@ impl<'a> DNAHashTable<'a> {
 	}
 
 	//Get the table size
-	fn get_table_size(segments : &Vec<String>, k : usize) -> usize {
+	pub fn get_table_size(segments : &Vec<String>, k : usize) -> usize {
 		let mut size : usize = 0;
 		let mut pset = PrimeSet::new();
 		
@@ -120,29 +122,321 @@ impl<'a> DNAHashTable<'a> {
 		}
 		hash_value % size
 	}
-}
 
-impl<'a> Iterator for DNAHashTable<'a> {
-	type Item = &'a Kmer;
-
-	fn next(&mut self) -> Option<&'a Kmer> {
-		if self.segment_iter_index >= self.size {
-			None
-		} else {
-			let next_kmer : &'a Kmer = &self.hash_table[self.segment_iter_index][self.kmer_iter_index];
-			self.segment_iter_index += 1;
-			self.kmer_iter_index += 1;
-			Some(next_kmer)
+	pub fn get_most_likely_position(&self, segments : &Vec<String>, lmer : &str) -> Option<(usize, usize)> {
+		let mut kmer_counts = HashMultiSet::<(usize, usize)>::new();
+		for i in 0..(lmer.len() - self.k) {
+			println!("{}", i);
+			let kmer_string : &str = &lmer[i..(i+self.k)];
+			match DNAHashTable::get_kmer(&self, kmer_string) {
+				Some((kmers, kmer_indexes)) => {
+					for kmer_index in kmer_indexes {
+						let kmer : &Kmer = &kmers[kmer_index];
+						if !(kmer.position < i || (kmer.position - i + lmer.len()) > segments[kmer.segment_index].len()) {
+							kmer_counts.insert((kmer.segment_index, kmer.position - i));
+						}
+					}
+				},
+				None => {},
+			}
+		}
+		let mut max_count : usize = 0;
+		let mut max_position : (usize, usize) = (0, 0);
+		for element in kmer_counts.distinct_elements() {
+			if kmer_counts.count_of(*element) > max_count {
+				max_count = kmer_counts.count_of(*element);
+				max_position = *element;
+			}
+		}
+		match max_count {
+			0 => None,
+			_ => Some(max_position)
 		}
 	}
 }
 
+//impl<'a> Iterator for DNAHashTable<'a> {
+//	type Item = &'a Kmer;
+
+//	fn next(&mut self) -> Option<&'a Kmer> {
+//		if self.segment_iter_index >= self.size {
+//			None
+//		} else {
+//			let next_kmer : &'a Kmer = &self.hash_table[self.segment_iter_index][self.kmer_iter_index];
+//			self.segment_iter_index += 1;
+//			self.kmer_iter_index += 1;
+//			Some(next_kmer)
+//		}
+//	}
+//}
+
 //CONSIDER USING A TRAIT HERE FOR DIFFERING KMERS ON CREATION TIME
 
 //A locus is a location in the genome, which we represent by the segment that the k-mer mapped to and the location on the segment
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Kmer {
 	pub segment_index : usize,
 	pub position : usize,
 	pub creation_time : usize,
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+    fn test_hash_function_1() {
+        let kmer_1 : &str = "ATG";
+	    assert_eq!((0*1 + 3*4 + 2*16) % 3, DNAHashTable::hash_function(kmer_1, kmer_1.len(), 3));
+    }
+
+    #[test]
+    fn test_hash_function_2() {
+        let kmer_1 : &str = "TGAC";
+	    assert_eq!((3*1 + 2*4 + 0*16 + 1*64) % 5, DNAHashTable::hash_function(kmer_1, kmer_1.len(), 5));
+    }
+
+    #[test]
+    fn test_hash_function_3() {
+        let kmer_1 : &str = "AAGTCT";
+	    assert_eq!((0*1 + 0*4 + 2*16 + 3*64 + 1*256 + 3*1024) % 7, DNAHashTable::hash_function(kmer_1, kmer_1.len(), 7));
+    }
+
+    #[test]
+    fn test_hash_table_create_1() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 1;
+	    segments.push("ATGTG".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    let kmer_1 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 0,
+	    	creation_time : 0
+	    };
+	    let kmer_2 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 1,
+	    	creation_time : 1
+	    };
+	    let kmer_3 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 2,
+	    	creation_time : 2
+	    };
+	    let kmer_4 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 3,
+	    	creation_time : 3
+	    };
+	    let kmer_5 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 4,
+	    	creation_time : 4
+	    };
+	    assert_eq!(7, kmer_hash_table.size);
+	    assert_eq!(vec![kmer_1], kmer_hash_table.hash_table[0]);
+	    assert_eq!(Vec::<Kmer>::new(), kmer_hash_table.hash_table[1]);
+	    assert_eq!(vec![kmer_3, kmer_5], kmer_hash_table.hash_table[2]);
+	    assert_eq!(vec![kmer_2, kmer_4], kmer_hash_table.hash_table[3]);
+    }
+
+    #[test]
+    fn test_hash_table_create_2() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 3;
+	    segments.push("ATGTG".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    let kmer_1 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 0,
+	    	creation_time : 0
+	    };
+	    let kmer_2 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 1,
+	    	creation_time : 1
+	    };
+	    let kmer_3 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 2,
+	    	creation_time : 2
+	    };
+	    assert_eq!(3, kmer_hash_table.size);
+	    assert_eq!(Vec::<Kmer>::new(), kmer_hash_table.hash_table[0]);
+	    assert_eq!(vec![kmer_3], kmer_hash_table.hash_table[1]);
+	    assert_eq!(vec![kmer_1, kmer_2], kmer_hash_table.hash_table[2]);
+    }
+
+    #[test]
+    fn test_hash_table_create_3() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 3;
+	    segments.push("ATGTG".to_string());
+	    segments.push("GTGC".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    let kmer_1 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 0,
+	    	creation_time : 0
+	    };
+	    let kmer_2 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 1,
+	    	creation_time : 1
+	    };
+	    let kmer_3 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 2,
+	    	creation_time : 2
+	    };
+	    let kmer_4 : Kmer = Kmer {
+	    	segment_index : 1,
+	    	position : 0,
+	    	creation_time : 3
+	    };
+	    let kmer_5 : Kmer = Kmer {
+	    	segment_index : 1,
+	    	position : 1,
+	    	creation_time : 4
+	    };
+	    assert_eq!(7, kmer_hash_table.size);
+	    assert_eq!(Vec::<Kmer>::new(), kmer_hash_table.hash_table[0]);
+	    assert_eq!(Vec::<Kmer>::new(), kmer_hash_table.hash_table[1]);
+	    assert_eq!(vec![kmer_1], kmer_hash_table.hash_table[2]);
+	    assert_eq!(vec![kmer_2], kmer_hash_table.hash_table[3]);
+	    assert_eq!(vec![kmer_3, kmer_4], kmer_hash_table.hash_table[4]);
+	    assert_eq!(Vec::<Kmer>::new(), kmer_hash_table.hash_table[5]);
+	    assert_eq!(vec![kmer_5], kmer_hash_table.hash_table[6]);
+    }
+
+    #[test]
+    fn test_hash_table_get_1() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 1;
+	    segments.push("ATGTG".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    let kmer_1 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 0,
+	    	creation_time : 0
+	    };
+	    let kmer_2 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 1,
+	    	creation_time : 1
+	    };
+	    let kmer_3 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 2,
+	    	creation_time : 2
+	    };
+	    let kmer_4 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 3,
+	    	creation_time : 3
+	    };
+	    let kmer_5 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 4,
+	    	creation_time : 4
+	    };
+	    assert_eq!(Some((&vec![kmer_1], vec![0])), kmer_hash_table.get_kmer("A"));
+	    assert_eq!(Some((&vec![kmer_3, kmer_5], vec![0, 1])), kmer_hash_table.get_kmer("G"));
+	    assert_eq!(Some((&vec![kmer_2, kmer_4], vec![0, 1])), kmer_hash_table.get_kmer("T"));
+    }
+
+    #[test]
+    fn test_hash_table_get_2() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 3;
+	    segments.push("ATGTG".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    let kmer_1 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 0,
+	    	creation_time : 0
+	    };
+	    let kmer_2 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 1,
+	    	creation_time : 1
+	    };
+	    let kmer_3 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 2,
+	    	creation_time : 2
+	    };
+	    let vec_1 : &Vec<Kmer> = &vec![kmer_1, kmer_2];
+	    assert_eq!(None, kmer_hash_table.get_kmer("TAT"));
+	    assert_eq!(None, kmer_hash_table.get_kmer("TATT"));
+	    assert_eq!(Some((&vec![kmer_3], vec![0])), kmer_hash_table.get_kmer("GTG"));
+	    assert_eq!(Some((vec_1, vec![0])), kmer_hash_table.get_kmer("ATG"));
+	    assert_eq!(Some((vec_1, vec![1])), kmer_hash_table.get_kmer("TGT"));
+    }
+
+    #[test]
+    fn test_hash_table_get_3() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 3;
+	    segments.push("ATGTG".to_string());
+	    segments.push("GTGC".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    let kmer_1 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 0,
+	    	creation_time : 0
+	    };
+	    let kmer_2 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 1,
+	    	creation_time : 1
+	    };
+	    let kmer_3 : Kmer = Kmer {
+	    	segment_index : 0,
+	    	position : 2,
+	    	creation_time : 2
+	    };
+	    let kmer_4 : Kmer = Kmer {
+	    	segment_index : 1,
+	    	position : 0,
+	    	creation_time : 3
+	    };
+	    let kmer_5 : Kmer = Kmer {
+	    	segment_index : 1,
+	    	position : 1,
+	    	creation_time : 4
+	    };
+	    assert_eq!(None, kmer_hash_table.get_kmer("TAT"));
+	    assert_eq!(Some((&vec![kmer_1], vec![0])), kmer_hash_table.get_kmer("ATG"));
+	    assert_eq!(Some((&vec![kmer_2], vec![0])), kmer_hash_table.get_kmer("TGT"));
+	    assert_eq!(Some((&vec![kmer_3, kmer_4], vec![0, 1])), kmer_hash_table.get_kmer("GTG"));
+	    assert_eq!(Some((&vec![kmer_5], vec![0])), kmer_hash_table.get_kmer("TGC"));
+    }
+
+    #[test]
+    fn test_get_max_j_1() {
+    	assert_eq!(31, DNAHashTable::get_max_j(100));
+    	assert_eq!(3, DNAHashTable::get_max_j(3));
+    }
+
+    #[test]
+    fn test_get_most_likely_position_1() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 3;
+	    segments.push("ATGTGACGCCGATG".to_string());
+	    segments.push("GTGC".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    assert_eq!(Some((0, 0)), kmer_hash_table.get_most_likely_position(&segments, "ATGT"));
+    	assert_eq!(Some((0, 5)), kmer_hash_table.get_most_likely_position(&segments, "ACGCCGA"));
+    }
+
+    #[test]
+    fn test_get_most_likely_position_2() {
+        let mut segments : Vec<String> = Vec::<String>::new();
+	    let k : usize = 3;
+	    segments.push("ATGTGATGCCGATG".to_string());
+	    segments.push("GTGCGATGATAGAG".to_string());
+	    let kmer_hash_table = DNAHashTable::new(&segments, k);
+	    assert_eq!(Some((1, 4)), kmer_hash_table.get_most_likely_position(&segments, "CATGATA"));
+    }
 }
