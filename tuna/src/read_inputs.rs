@@ -1,5 +1,7 @@
 use std::env;
 use std::fs::File;
+use std::io::Write;
+use std::io::LineWriter;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::collections::HashMap;
@@ -113,5 +115,11 @@ pub fn read_fa_file(filename : &str) -> Vec<FaEntry> {
 }
 
 pub fn write_output(filename : &str, counts : HashMap<String, i32>) -> bool {
-	unimplemented!();
+	let file = File::create(filename).expect("Unable to create file");
+	let mut lw = LineWriter::new(file);
+
+	for (k, v) in counts.iter() {
+		lw.write_fmt(format_args!("{}\t{}\n", k, v));
+	}
+	return true
 }
