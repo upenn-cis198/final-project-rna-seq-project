@@ -1,14 +1,18 @@
 use dna_hash_table::DNAHashTable;
 use dna_hash_table::Kmer;
 use std::collections::HashSet;
+use std::collections::HashMap;
+use log::*;
 
 pub struct DNAReadGraph<'a> {
 	nodes : Vec<ReferenceRead>,
 	node_hash_table : DNAHashTable<'a>,
+	kmer_hash_table : DNAHashTable<'a>
 }
 
 impl<'a> DNAReadGraph<'a> {
-	pub fn new(segments : &'a Vec<String>, kmer_hash_table : &DNAHashTable, l : usize, k : usize, d : usize) -> DNAReadGraph<'a> {
+	pub fn new(segments : &'a Vec<String>, l : usize, k : usize, d : usize) -> DNAReadGraph<'a> {
+		let kmer_hash_table : DNAHashTable = DNAHashTable::new(segments, k);
 		let node_hash_table : DNAHashTable = DNAHashTable::new(segments, l);
 		let default_reference_lmer : Kmer = Kmer {
 			segment_index : 0,
@@ -30,6 +34,7 @@ impl<'a> DNAReadGraph<'a> {
 		let mut segment_iter_index : usize = 0;
 		let mut kmer_iter_index : usize = 0;
 
+		debug!("{}", node_hash_table.hash_table.len());
 		while segment_iter_index < node_hash_table.hash_table.len() {
 			while kmer_iter_index < node_hash_table.hash_table[segment_iter_index].len() {
 				let lmer : &Kmer = &(node_hash_table.hash_table[segment_iter_index][kmer_iter_index]);
@@ -92,20 +97,30 @@ impl<'a> DNAReadGraph<'a> {
 			}
 			kmer_iter_index = 0;
 			segment_iter_index += 1;
+			//debug!("{}", segment_iter_index);
 		}
 
 
 		DNAReadGraph {
 			nodes : nodes,
 			node_hash_table : node_hash_table,
+			kmer_hash_table : kmer_hash_table,
 		}
 	}
 
-	pub fn get_read_segment_index(&self, kmer_hash_table : &DNAHashTable, segments : &Vec<String>, read : &str) -> Option<usize> {
-		match kmer_hash_table.get_most_likely_position(segments, read) {
-			Some((segment_index, position)) => Some(segment_index),
-			None => None,
-		}
+	pub fn get_read_segment_indexes(&self, segments : &Vec<String>, reads : &Vec<String>) -> HashMap<i32, i32> {
+		let mut segment_index_counts : HashMap<i32, i32> = HashMap::new();
+
+		for read in reads {
+			match self.kmer_hash_table.get_most_likely_position(segments, read) {
+		    	Some((segment_index, position)) => {
+	                let count = segment_index_counts.entry(segment_index as i32).or_insert(0);
+	                *count += 1;
+	    		},
+		    	None => {},
+		    }
+	    };
+		segment_index_counts
 	}
 
 	//Combine with get lmer differences
@@ -276,8 +291,7 @@ mod tests {
 	    let k : usize = 1;
 	    let d : usize = 8;
 	    segments.push("ATGTG".to_string());
-	    let kmer_hash_table = DNAHashTable::new(&segments, k);
-	    let dna_read_graph = DNAReadGraph::new(&segments, &kmer_hash_table, l, k, d);
+	    let dna_read_graph = DNAReadGraph::new(&segments, l, k, d);
 	    
 	    let kmer_1 : Kmer = Kmer {
 	    	segment_index : 0,
@@ -308,8 +322,7 @@ mod tests {
 	    let k : usize = 1;
 	    let d : usize = 1;
 	    segments.push("ATGAG".to_string());
-	    let kmer_hash_table = DNAHashTable::new(&segments, k);
-	    let dna_read_graph = DNAReadGraph::new(&segments, &kmer_hash_table, l, k, d);
+	    let dna_read_graph = DNAReadGraph::new(&segments, l, k, d);
 	    
 	    let kmer_1 : Kmer = Kmer {
 	    	segment_index : 0,
@@ -341,8 +354,7 @@ mod tests {
 	    let k : usize = 1;
 	    let d : usize = 1;
 	    segments.push("ATTTT".to_string());
-	    let kmer_hash_table = DNAHashTable::new(&segments, k);
-	    let dna_read_graph = DNAReadGraph::new(&segments, &kmer_hash_table, l, k, d);
+	    let dna_read_graph = DNAReadGraph::new(&segments, l, k, d);
 	    
 	    let kmer_1 : Kmer = Kmer {
 	    	segment_index : 0,
@@ -365,19 +377,5 @@ mod tests {
 	    assert_eq!(vec![vec![1, 2], Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_T);
 	    assert_eq!(kmer_2, dna_read_graph.nodes[1].lmer);
 	    assert_eq!(kmer_3, dna_read_graph.nodes[2].lmer);
-    }
-
-    #[test]
-    fn test_get_most_likely_position_1() {
-        let mut segments : Vec<String> = Vec::<String>::new();
-	    let l : usize = 4;
-	    let k : usize = 3;
-	    let d : usize = 1;
-	    segments.push("ATGTGATGCCGATG".to_string());
-	    segments.push("GTGC".to_string());
-	    let kmer_hash_table = DNAHashTable::new(&segments, k);
-	    let dna_read_graph = DNAReadGraph::new(&segments, &kmer_hash_table, l, k, d);
-	    assert_eq!(Some(0), dna_read_graph.get_read_segment_index(&kmer_hash_table, &segments, "ATGT"));
-    	assert_eq!(Some(1), dna_read_graph.get_read_segment_index(&kmer_hash_table, &segments, "GTGC"));
     }
 }

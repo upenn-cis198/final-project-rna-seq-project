@@ -6,3 +6,7 @@ authors = ["Steffen Cornwell <steffencornwell@gmail.com>"]
 [dependencies]
 primes = "0.2.3"
 multiset = "0.0.4"
+rayon = "1.0.3"
+structopt = "0.2.13"
+env_logger = "0.5"
+log = "0.4"
