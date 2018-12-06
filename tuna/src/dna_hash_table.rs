@@ -16,6 +16,7 @@ pub struct DNAHashTable<'a> {
 
 impl<'a> DNAHashTable<'a> {
 	
+	//Create a new DNA Hash Table of k-mers
 	//k is the size of the k-mers to be hashed, and j is the maximum index of the k-mer that can be used for hashing before overflow
 	pub fn new(segments : &Vec<String>, k : usize) -> DNAHashTable {
 		let j : usize = DNAHashTable::get_max_j(k);
@@ -47,6 +48,7 @@ impl<'a> DNAHashTable<'a> {
 		}
 	}
 
+	//Get the k-mers Kmer objects associated with a k-mer string
 	pub fn get_kmer(&self, kmer_string : &str) -> Option<(&Vec<Kmer>, Vec<usize>)> {
 		if kmer_string.len() == self.k {
 			let hash_value : usize = DNAHashTable::hash_function(kmer_string, self.j, self.size);
@@ -123,6 +125,7 @@ impl<'a> DNAHashTable<'a> {
 		hash_value % size
 	}
 
+	//Get the most likely position of a read using the k-mer hash table
 	pub fn get_most_likely_position(&self, segments : &Vec<String>, lmer : &str) -> Option<(usize, usize)> {
 		let mut kmer_counts = HashMultiSet::<(usize, usize)>::new();
 		for i in 0..(lmer.len() - self.k + 1) {
@@ -155,6 +158,7 @@ impl<'a> DNAHashTable<'a> {
 	}
 }
 
+//We tried to make an iterator but the reference lifetimes made it fail
 //impl<'a> Iterator for DNAHashTable<'a> {
 //	type Item = &'a Kmer;
 

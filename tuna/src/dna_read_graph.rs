@@ -14,6 +14,8 @@ pub struct DNAReadGraph<'a> {
 }
 
 impl<'a> DNAReadGraph<'a> {
+
+	//Create a new DNA Read Graph based on just the segments
 	pub fn new(segments : &'a Vec<String>, l : usize, k : usize, d : usize) -> DNAReadGraph<'a> {
 		let kmer_hash_table : DNAHashTable = DNAHashTable::new(segments, k);
 		let node_hash_table : DNAHashTable = DNAHashTable::new(segments, l);
@@ -116,6 +118,8 @@ impl<'a> DNAReadGraph<'a> {
 		}
 	}
 
+	//For an input set of reads, find the segments that each read came from and return a hashmap
+	//Of segment and the number of reads for each segment
 	pub fn get_read_segment_indexes(&self, segments : &Vec<String>, reads : &Vec<String>) -> HashMap<i32, i32> {
 		let mut segment_index_counts : HashMap<i32, i32> = HashMap::new();
 		debug!("{}", segments[0]);
@@ -135,6 +139,7 @@ impl<'a> DNAReadGraph<'a> {
 		segment_index_counts
 	}
 
+	//Advanced Algorithm, use the DNA Read Graph to get a read location
 	fn get_read_graph_segment_index(&self, segments: &Vec<String>, read : &str, l : usize) -> Option<usize>{
 		match self.kmer_hash_table.get_most_likely_position(segments, read) {
 	    	Some((segment_index, position)) => {
@@ -177,7 +182,7 @@ impl<'a> DNAReadGraph<'a> {
 	    }
 	}
 
-	//Combine with get lmer differences
+	//Distance between to l-mers
 	fn lmers_distance(lmer1 : &str, lmer2 : &str, d : usize) -> usize {
 		let mut differences : usize = 0;
 
@@ -195,6 +200,7 @@ impl<'a> DNAReadGraph<'a> {
 		differences
 	}
 
+	//Return the position differences and letter differences between two l-mers
 	fn get_lmer_differences(lmer1 : &str, lmer2 : &str, d : usize) -> (Vec<usize>, Vec<char>) {
 		let mut transition_positions : Vec<usize> = Vec::<usize>::new();
 		let mut transition_letters : Vec<char> = Vec::<char>::new();
@@ -217,6 +223,7 @@ impl<'a> DNAReadGraph<'a> {
 		(transition_positions, transition_letters)
 	}
 
+	//Using the l-mer position and string, get the node index of it in the graph
 	fn get_lmer_index(node_hash_table : &DNAHashTable, lmer_segment_index : usize, lmer_position : usize, lmer_string : &str) -> usize {
 		let (lmer_entries, lmer_entries_indexes) = node_hash_table.get_kmer(lmer_string).unwrap();
 		let mut lmer_index : usize = 0;
@@ -232,7 +239,6 @@ impl<'a> DNAReadGraph<'a> {
 	}
 }
 
-//TURN INTO REFERECNE TO kmer
 #[derive(Clone)]
 pub struct ReferenceRead {
 	pub lmer : Kmer,
@@ -260,7 +266,7 @@ mod tests {
     fn test_lmers_within_distance_2() {
     	let lmer_1 : &str = "ATGGCATA";
     	let lmer_2 : &str = "ATAGGATA";
-    	assert!(2, DNAReadGraph::lmers_distance(lmer_1, lmer_2, 1));
+    	assert_eq!(2, DNAReadGraph::lmers_distance(lmer_1, lmer_2, 1));
     }
 
     #[test]
@@ -364,8 +370,8 @@ mod tests {
 	    	creation_time : 2
 	    };
 	    assert_eq!(kmer_1, dna_read_graph.nodes[0].lmer);
-	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_A);
-	    assert_eq!(vec![vec![2], Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_G);
+	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_a);
+	    assert_eq!(vec![vec![2], Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_g);
 	    assert_eq!(kmer_2, dna_read_graph.nodes[1].lmer);
 	    assert_eq!(kmer_3, dna_read_graph.nodes[2].lmer);
     }
@@ -395,8 +401,8 @@ mod tests {
 	    	creation_time : 2
 	    };
 	    assert_eq!(kmer_1, dna_read_graph.nodes[0].lmer);
-	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_A);
-	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_G);
+	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_a);
+	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_g);
 	    
 	    assert_eq!(kmer_2, dna_read_graph.nodes[1].lmer);
 	    assert_eq!(kmer_3, dna_read_graph.nodes[2].lmer);
@@ -427,9 +433,9 @@ mod tests {
 	    	creation_time : 2
 	    };
 	    assert_eq!(kmer_1, dna_read_graph.nodes[0].lmer);
-	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_A);
-	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_G);
-	    assert_eq!(vec![vec![1, 2], Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_T);
+	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_a);
+	    assert_eq!(vec![Vec::<usize>::new(), Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_g);
+	    assert_eq!(vec![vec![1, 2], Vec::<usize>::new(), Vec::<usize>::new()], dna_read_graph.nodes[0].near_reads_t);
 	    assert_eq!(kmer_2, dna_read_graph.nodes[1].lmer);
 	    assert_eq!(kmer_3, dna_read_graph.nodes[2].lmer);
     }
