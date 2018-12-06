@@ -1,5 +1,8 @@
+extern crate multiset;
+
 use dna_hash_table::DNAHashTable;
 use dna_hash_table::Kmer;
+use self::multiset::HashMultiSet;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use log::*;
@@ -25,6 +28,7 @@ impl<'a> DNAReadGraph<'a> {
 			near_reads_c : Vec::<Vec<usize>>::new(),
 			near_reads_g : Vec::<Vec<usize>>::new(),
 			near_reads_t : Vec::<Vec<usize>>::new(),
+			read_distances : HashMap::<usize, usize>::new(),
 		};
 
 		//Make this more efficient later - wastes space
@@ -45,6 +49,7 @@ impl<'a> DNAReadGraph<'a> {
 				let mut near_reads_c = vec![Vec::<usize>::new(); l];
 				let mut near_reads_g = vec![Vec::<usize>::new(); l];
 				let mut near_reads_t = vec![Vec::<usize>::new(); l];
+				let mut read_distances = HashMap::<usize, usize>::new();
 
 				//Hash every k-mer of the l-mer
 				for i in lmer.position..(lmer.position + l - k + 1) {
@@ -59,11 +64,13 @@ impl<'a> DNAReadGraph<'a> {
 								
 								let lmer_string : &str = &(segments[lmer.segment_index][lmer.position..(lmer.position + l)]);
 								let matching_lmer_string : &str = &(segments[matching_kmer.segment_index][matching_lmer_position..(matching_lmer_position + l)]);
+								let lmer_distance : usize = DNAReadGraph::lmers_distance(lmer_string, matching_lmer_string, d);
 								if !traversed_matching_lmers.contains(&(matching_kmer.segment_index, matching_lmer_position)) 
-								&& DNAReadGraph::lmers_within_distance(lmer_string, matching_lmer_string, d) {
+								&& lmer_distance <= d {
 
 									let (transition_positions, transition_letters) = DNAReadGraph::get_lmer_differences(lmer_string, matching_lmer_string, d);
 									let matching_lmer_index : usize = DNAReadGraph::get_lmer_index(&node_hash_table, matching_kmer.segment_index, matching_lmer_position, matching_lmer_string);
+									read_distances.insert(matching_lmer_index, lmer_distance);
 
 									let mut transition_positions_iter = transition_positions.iter();
 									let mut transition_letters_iter = transition_letters.iter();
@@ -92,6 +99,7 @@ impl<'a> DNAReadGraph<'a> {
 					near_reads_c : near_reads_c,
 					near_reads_g : near_reads_g,
 					near_reads_t : near_reads_t,
+					read_distances : read_distances,
 				};
 				kmer_iter_index += 1;
 			}
@@ -113,8 +121,8 @@ impl<'a> DNAReadGraph<'a> {
 		debug!("{}", segments[0]);
 		for read in reads {
 			debug!("{}", read);
-			match self.kmer_hash_table.get_most_likely_position(segments, read) {
-		    	Some((segment_index, _)) => {
+			match self.get_read_graph_segment_index(segments, read, self.node_hash_table.k) {
+		    	Some(segment_index) => {
 	                let count = segment_index_counts.entry(segment_index as i32).or_insert(0);
 	                *count += 1;
 	                debug!("{}", *count);
@@ -127,8 +135,50 @@ impl<'a> DNAReadGraph<'a> {
 		segment_index_counts
 	}
 
+	fn get_read_graph_segment_index(&self, segments: &Vec<String>, read : &str, l : usize) -> Option<usize>{
+		match self.kmer_hash_table.get_most_likely_position(segments, read) {
+	    	Some((segment_index, position)) => {
+                let initial_node_index = DNAReadGraph::get_lmer_index(&self.node_hash_table, segment_index, position, &segments[segment_index][position..(position + l)]);
+                let initial_node = &self.nodes[initial_node_index];
+                let initial_lmer = &initial_node.lmer;
+                let lmer_string : &str = &segments[initial_lmer.segment_index][initial_lmer.position..(initial_lmer.position + l)];
+                let initial_distance = DNAReadGraph::lmers_distance(lmer_string, read, l);
+                let (transition_positions, transition_letters) = DNAReadGraph::get_lmer_differences(lmer_string, read, l);
+                let mut near_lmers = HashMultiSet::<usize>::new();
+                for i in 0..transition_positions.len() {
+                	let transition_position = transition_positions[i];
+                	let transition_letter = transition_letters[i];
+          			let empty_vector = Vec::<usize>::new();
+                	let near_transitions = match transition_letter {
+                		'A' => &initial_node.near_reads_a[transition_position],
+                		'C' => &initial_node.near_reads_c[transition_position],
+                		'G' => &initial_node.near_reads_g[transition_position],
+                		'T' => &initial_node.near_reads_t[transition_position],
+                		_ => &empty_vector,
+                	};
+                	for near_transition in near_transitions {
+                		near_lmers.insert(*near_transition);
+                	}
+                }
+                let mut min_read_distance = initial_distance;
+                let mut min_distance_lmer = initial_node_index;
+                for near_lmer in near_lmers.distinct_elements() {
+                	let lmer_transition_count = near_lmers.count_of(*near_lmer);
+                	let read_lmer_distance = initial_distance
+                	+ initial_node.read_distances[near_lmer] - lmer_transition_count;
+                	if read_lmer_distance < min_read_distance {
+                		min_read_distance = read_lmer_distance;
+                		min_distance_lmer = *near_lmer;
+                	}
+                }
+                Some((&self.nodes[min_distance_lmer]).lmer.segment_index)
+    		},
+	    	None => None,
+	    }
+	}
+
 	//Combine with get lmer differences
-	fn lmers_within_distance(lmer1 : &str, lmer2 : &str, d : usize) -> bool {
+	fn lmers_distance(lmer1 : &str, lmer2 : &str, d : usize) -> usize {
 		let mut differences : usize = 0;
 
 		let mut lmer1_iterator = lmer1.chars();
@@ -142,7 +192,7 @@ impl<'a> DNAReadGraph<'a> {
 				break;
 			}
 		}
-		differences <= d
+		differences
 	}
 
 	fn get_lmer_differences(lmer1 : &str, lmer2 : &str, d : usize) -> (Vec<usize>, Vec<char>) {
@@ -190,6 +240,7 @@ pub struct ReferenceRead {
 	near_reads_c : Vec<Vec<usize>>,
 	near_reads_g : Vec<Vec<usize>>,
 	near_reads_t : Vec<Vec<usize>>,
+	read_distances : HashMap<usize, usize>,
 }
 
 #[cfg(test)]
@@ -202,21 +253,21 @@ mod tests {
     fn test_lmers_within_distance_1() {
     	let lmer_1 : &str = "ATAGGATA";
     	let lmer_2 : &str = "ATAGGATA";
-    	assert!(DNAReadGraph::lmers_within_distance(lmer_1, lmer_2, 1));
+    	assert_eq!(0, DNAReadGraph::lmers_distance(lmer_1, lmer_2, 1));
     }
 
     #[test]
     fn test_lmers_within_distance_2() {
     	let lmer_1 : &str = "ATGGCATA";
     	let lmer_2 : &str = "ATAGGATA";
-    	assert!(!DNAReadGraph::lmers_within_distance(lmer_1, lmer_2, 1));
+    	assert!(2, DNAReadGraph::lmers_distance(lmer_1, lmer_2, 1));
     }
 
     #[test]
     fn test_lmers_within_distance_3() {
     	let lmer_1 : &str = "ATGGCATA";
-    	let lmer_2 : &str = "ATAGGATA";
-    	assert!(DNAReadGraph::lmers_within_distance(lmer_1, lmer_2, 2));
+    	let lmer_2 : &str = "ATAGGAAA";
+    	assert_eq!(3, DNAReadGraph::lmers_distance(lmer_1, lmer_2, 3));
     }
 
     #[test]

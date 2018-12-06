@@ -8,7 +8,7 @@ pub struct DNAHashTable<'a> {
 	pub hash_table : Vec<Vec<Kmer>>,
 	segments : &'a Vec<String>,
 	pub size : usize,
-	k : usize,
+	pub k : usize,
 	j : usize,
 	segment_iter_index : usize,
 	kmer_iter_index : usize,

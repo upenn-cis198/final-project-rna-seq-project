@@ -1,0 +1,15 @@
+The algorithm functions as follows:
+
+We shred each read of length l into k-mers of length k (these are the substrings of the read). We have a reference transcriptome file, which has been split into segments, such that each read (should technically) come from one and only one segment. 
+
+The simple algorithm first builds a reference hash table from the segments by hashing all k-mers strings from their strings to their location in the transcriptome, which is represented by a (segment_index, position) pair. Then, for each read the algorithm breaks the read into k-mers, hashes those k-mers to see the positions they could have come from, and selects the position in the transcriptome with the most number of k-mers hashed. Then, the segment index for the read is recorded. The simple algorithm currently works, and should be under the name "stable version commit" on Github.
+
+The input is k, the k-mer length, and for now l the read length and d, a distance variable are fixed, and a FASTA file of reads, a segment file, and the output is a list of segments and their number of reads that mapped to it.
+
+The advanced algorithm builds a reference graph, and it uses the simple algorithm so that when the read initially hashes to a location that has the most kmers, then it checks the neighbors of the location, which is defined by other locations with similar DNA sequence, and it checks to see if those are a better match. It does this in an optimized manner so that it first checks the read to see the difference with the original location it mapped to, then it checks those differences against the differences between the original location and its neighbors to compute a distance to the neighbors. This graph also is stored in a list. This is done by having each location that each node represents be stored in a second hash table, which hashes the location's string to a node containing the index in the graph of the location. 
+
+The graph of locations that are near is constructed by building a hash table of k-mers, then for each location hashing the k-mers to see what other locations share those k-mers. Then, an alignment is done, and other locations within distance d (a fixed parameter for now) are set to be neighbors, and the changes needed to go from the original location to each neighbor is recorded in "Reference Read".
+
+The advanced algorithm complies, but it is experimental and fails sometimes and other times does not give the right output.
+
+Please email me with any questions about the algorithm - I plan to actually use this in my research, so I will continually update the code after the deadline as I like the program a lot and want to see if it works. I plan to also upload some accuracy testing code soon.
